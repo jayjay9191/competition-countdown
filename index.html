@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>比赛倒计时 · Dashboard</title>
+<style>
+  :root {
+    --bg: #060a12;
+    --panel: rgba(14, 21, 36, 0.88);
+    --panel-solid: #0e1524;
+    --line: rgba(130, 165, 225, 0.14);
+    --text: #e8eefc;
+    --muted: #8b9bb8;
+    --cyan: #36e2e8;
+    --violet: #8b7cff;
+    --green: #3ee6a0;
+    --amber: #ffc76b;
+    --red: #ff5c6c;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(900px 600px at 8% -10%, rgba(54, 226, 232, 0.10), transparent 60%),
+      radial-gradient(800px 500px at 95% 5%, rgba(139, 124, 255, 0.12), transparent 60%),
+      linear-gradient(180deg, #080d18 0%, var(--bg) 60%);
+    color: var(--text);
+    font-family: "Inter", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 40px 24px 64px;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(140, 170, 230, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(140, 170, 230, 0.035) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: linear-gradient(to bottom, black, transparent 80%);
+    z-index: 0;
+  }
+
+  .wrap { max-width: 1240px; margin: 0 auto; position: relative; z-index: 1; }
+
+  /* ---------- header ---------- */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 28px;
+    flex-wrap: wrap;
+    padding-bottom: 26px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    color: var(--cyan);
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  .eyebrow .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 0 4px rgba(54, 226, 232, 0.12), 0 0 14px var(--cyan);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.45; transform: scale(0.8); }
+  }
+
+  h1 {
+    margin: 14px 0 8px;
+    font-size: clamp(30px, 4.5vw, 48px);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    font-weight: 800;
+    background: linear-gradient(100deg, #ffffff 10%, #9fe9ff 55%, #a99dff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .subtitle { color: var(--muted); font-size: 13px; margin: 0; letter-spacing: 0.02em; }
+
+  .today { text-align: right; }
+
+  .today-date {
+    font-size: clamp(18px, 2.2vw, 26px);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+  }
+
+  .today-meta {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .today-meta span { color: var(--cyan); }
+
+  /* ---------- stats ---------- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin: 26px 0 22px;
+  }
+
+  .stat {
+    background: linear-gradient(145deg, rgba(20, 30, 50, 0.9), rgba(11, 17, 30, 0.9));
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat::after {
+    content: "";
+    position: absolute;
+    top: 0; left: 18px; right: 18px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent, var(--cyan)), transparent);
+    opacity: 0.6;
+  }
+
+  .stat-label { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; }
+
+  .stat-value {
+    font-size: 27px;
+    font-weight: 800;
+    margin-top: 7px;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent, var(--text));
+  }
+
+  .stat-value small { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 4px; }
+
+  /* ---------- toolbar ---------- */
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .section-title em {
+    font-style: normal;
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .filters { display: flex; gap: 7px; flex-wrap: wrap; }
+
+  .filter {
+    background: rgba(17, 25, 42, 0.8);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 6px 13px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+
+  .filter:hover { color: var(--text); border-color: rgba(54, 226, 232, 0.4); }
+
+  .filter.active {
+    color: #03141a;
+    background: var(--cyan);
+    border-color: var(--cyan);
+    font-weight: 700;
+    box-shadow: 0 0 18px rgba(54, 226, 232, 0.25);
+  }
+
+  /* ---------- cards ---------- */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 14px;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 20px 20px 18px;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+    display: flex;
+    flex-direction: column;
+    min-height: 212px;
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 2px;
+    background: linear-gradient(180deg, var(--accent, var(--cyan)), transparent 75%);
+    opacity: 0.85;
+  }
+
+  .card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(120, 190, 240, 0.34);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
+  }
+
+  .card.urgent {
+    background:
+      radial-gradient(400px 180px at 100% 0%, rgba(255, 92, 108, 0.14), transparent 70%),
+      linear-gradient(145deg, rgba(39, 18, 28, 0.92), rgba(15, 14, 26, 0.94));
+    border-color: rgba(255, 92, 108, 0.48);
+    box-shadow: inset 0 0 30px rgba(255, 92, 108, 0.04), 0 0 22px rgba(255, 92, 108, 0.08);
+  }
+
+  .card.urgent::before { background: linear-gradient(180deg, var(--red), transparent 80%); width: 3px; }
+
+  .card.urgent:hover {
+    border-color: rgba(255, 92, 108, 0.8);
+    box-shadow: 0 16px 42px rgba(0, 0, 0, 0.4), 0 0 30px rgba(255, 92, 108, 0.16);
+  }
+
+  .card-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+
+  .tag {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 5px 10px;
+    border-radius: 999px;
+    letter-spacing: 0.04em;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+
+  .tag::before {
+    content: "";
+    display: inline-block;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: 1px;
+    background: currentColor;
+    box-shadow: 0 0 8px currentColor;
+  }
+
+  .tag-progress { color: var(--cyan); background: rgba(54, 226, 232, 0.09); border-color: rgba(54, 226, 232, 0.25); }
+  .tag-review { color: var(--violet); background: rgba(139, 124, 255, 0.10); border-color: rgba(139, 124, 255, 0.30); }
+  .tag-joined { color: var(--amber); background: rgba(255, 199, 107, 0.09); border-color: rgba(255, 199, 107, 0.25); }
+
+  .index {
+    font-size: 11px;
+    color: #53637f;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.08em;
+  }
+
+  .card h2 {
+    font-size: 17px;
+    line-height: 1.4;
+    margin: 16px 0 12px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  .deadline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .deadline .kind {
+    color: #9db0cd;
+    background: rgba(120, 150, 210, 0.10);
+    border: 1px solid rgba(120, 150, 210, 0.16);
+    padding: 3px 8px;
+    border-radius: 5px;
+  }
+
+  .deadline time { font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+
+  .card-bottom {
+    margin-top: auto;
+    padding-top: 18px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .days { display: flex; align-items: baseline; gap: 8px; }
+
+  .days b {
+    font-size: 46px;
+    line-height: 0.9;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent, var(--cyan));
+  }
+
+  .days span { font-size: 11px; color: var(--muted); }
+
+  .card.urgent .days b { color: var(--red); text-shadow: 0 0 22px rgba(255, 92, 108, 0.45); }
+  .card.urgent .days span { color: #ff9aa4; }
+
+  .meter { width: 92px; flex-shrink: 0; }
+
+  .meter-track {
+    height: 4px;
+    border-radius: 4px;
+    background: rgba(150, 175, 220, 0.12);
+    overflow: hidden;
+  }
+
+  .meter-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--accent, var(--cyan)), transparent);
+    box-shadow: 0 0 10px var(--accent, var(--cyan));
+  }
+
+  .card.urgent .meter-fill {
+    background: linear-gradient(90deg, var(--red), #ff9d6b);
+    box-shadow: 0 0 12px var(--red);
+  }
+
+  .meter-label {
+    font-size: 9px;
+    color: #5f6f8a;
+    text-align: right;
+    margin-top: 7px;
+    letter-spacing: 0.08em;
+  }
+
+  .urgent-flag {
+    position: absolute;
+    top: 0; right: 0;
+    background: var(--red);
+    color: #1a0308;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    padding: 4px 10px 5px;
+    border-radius: 0 0 0 9px;
+  }
+
+  .empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--muted);
+    padding: 60px 0;
+    border: 1px dashed var(--line);
+    border-radius: 16px;
+    font-size: 13px;
+  }
+
+  footer {
+    margin-top: 32px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    color: #5f6f8a;
+    font-size: 11px;
+    line-height: 1.7;
+  }
+
+  @media (max-width: 700px) {
+    body { padding: 26px 16px 48px; }
+    header { align-items: flex-start; }
+    .today { text-align: left; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow"><span class="dot"></span> Competition Countdown · Live</div>
+      <h1>比赛倒计时</h1>
+      <p class="subtitle">11 项正在参加的赛事 · 按截止日期由近到远排列 · 7 天内高亮预警</p>
+    </div>
+    <div class="today">
+      <div class="today-date" id="todayDate">—</div>
+      <div class="today-meta">本地时间 <span id="clock">--:--:--</span></div>
+    </div>
+  </header>
+
+  <section class="stats" id="stats"></section>
+
+  <div class="toolbar">
+    <div class="section-title">赛事清单 <em id="shownCount"></em></div>
+    <div class="filters" id="filters">
+      <button class="filter active" data-filter="all">全部</button>
+      <button class="filter" data-filter="urgent">7 天内</button>
+      <button class="filter" data-filter="进行中">进行中</button>
+      <button class="filter" data-filter="已提交待评审">已提交待评审</button>
+      <button class="filter" data-filter="已报名">已报名</button>
+    </div>
+  </div>
+
+  <section class="grid" id="grid"></section>
+
+  <footer>
+    <div>剩余天数按打开页面时的本地日期自动计算，含截止当日；跨天打开会自动更新。</div>
+    <div>MoonBit 11 月轮无固定截止日期，按原样显示并置于末尾。</div>
+  </footer>
+</div>
+
+<script>
+  // date: null 表示无明确截止日期
+  const events = [
+    { name: "AI PLAY 72H 创作黑客松", kind: "决赛", date: "2026-11-27", display: "2026-11-27", status: "已提交待评审", accent: "#8b7cff" },
+    { name: "荣耀 AI 创意大赛", kind: "征稿截止", date: "2026-11-22", display: "2026-11-22", status: "进行中", accent: "#36e2e8" },
+    { name: "Qoder 高校创造力大赛", kind: "截止", date: "2026-11-30", display: "2026-11-30 18:00", status: "进行中", accent: "#36e2e8" },
+    { name: "魔搭 AI+∞ 第三期 AI 造游戏", kind: "报名截止", date: "2026-12-01", display: "2026-12-01 12:00", status: "进行中", accent: "#36e2e8" },
+    { name: "PAYATHON", kind: "报名截止", date: "2026-12-01", display: "2026-12-01", status: "进行中", accent: "#36e2e8" },
+    { name: "松江·创世纪 AI 游戏创作赛", kind: "投稿截止", date: "2026-12-06", display: "2026-12-06", status: "进行中", accent: "#36e2e8" },
+    { name: "支付宝涌现奖", kind: "评审开始", date: "2026-12-07", display: "2026-12-07 → 12-15", status: "已提交待评审", accent: "#8b7cff" },
+    { name: "绿联黑客松", kind: "初稿", date: "2026-12-07", display: "2026-12-07", status: "进行中", accent: "#36e2e8" },
+    { name: "知乎 S3", kind: "报名截止", date: "2026-12-04", display: "2026-12-04", status: "进行中", accent: "#36e2e8" },
+    { name: "Rokid 开发者大赛", kind: "作品截止", date: "2027-01-28", display: "2027-01-28", status: "进行中", accent: "#36e2e8" },
+    { name: "MoonBit 2026 黑客松", kind: "赛程", date: null, display: "11 月轮进行中", status: "已报名", accent: "#ffc76b" }
+  ];
+
+  const statusClass = { "进行中": "tag-progress", "已提交待评审": "tag-review", "已报名": "tag-joined" };
+
+  function startOfToday() {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+
+  function daysUntil(dateStr, today) {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    return Math.round((new Date(y, m - 1, d) - today) / 86400000);
+  }
+
+  const today = startOfToday();
+  const enriched = events.map(e => ({
+    ...e,
+    days: e.date === null ? null : daysUntil(e.date, today),
+    urgent: e.date !== null && daysUntil(e.date, today) >= 0 && daysUntil(e.date, today) <= 7
+  }));
+
+  enriched.sort((a, b) => {
+    if (a.date === null) return 1;
+    if (b.date === null) return -1;
+    return a.date.localeCompare(b.date);
+  });
+
+  const fmtDate = new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
+  document.getElementById("todayDate").textContent = fmtDate.format(today);
+  function tick() {
+    document.getElementById("clock").textContent = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  const urgentCount = enriched.filter(e => e.urgent).length;
+  const nearest = enriched.filter(e => e.days !== null && e.days >= 0).reduce((a, b) => !a || b.days < a.days ? b : a, null);
+  const stats = [
+    { label: "参赛项目", value: enriched.length, unit: "项", accent: "#36e2e8" },
+    { label: "最近截止", value: nearest ? nearest.days : "—", unit: nearest ? "天后" : "", accent: "#8b7cff" },
+    { label: "7 天内截止", value: urgentCount, unit: "项", accent: "#ff5c6c" },
+    { label: "待评审", value: enriched.filter(e => e.status === "已提交待评审").length, unit: "项", accent: "#3ee6a0" }
+  ];
+  document.getElementById("stats").innerHTML = stats.map(s => `
+    <div class="stat" style="--accent:${s.accent}">
+      <div class="stat-label">${s.label}</div>
+      <div class="stat-value">${s.value}<small>${s.unit}</small></div>
+    </div>`).join("");
+
+  function render(filter) {
+    const visible = enriched.filter(e => {
+      if (filter === "all") return true;
+      if (filter === "urgent") return e.urgent;
+      return e.status === filter;
+    });
+    document.getElementById("shownCount").textContent = `显示 ${visible.length} / ${enriched.length}`;
+    document.getElementById("grid").innerHTML = visible.length ? visible.map((e, i) => {
+      const expired = e.days !== null && e.days < 0;
+      const daysHtml = e.days === null
+        ? `<div class="days"><b style="font-size:32px;color:${e.accent}">—</b><span>持续进行</span></div>`
+        : `<div class="days"><b>${e.days}</b><span>${expired ? "天 · 已截止" : "天后截止"}</span></div>`;
+      const meterWidth = e.days === null ? 100 : Math.max(6, Math.min(100, 100 - e.days * 1.1));
+      return `
+        <article class="card${e.urgent ? " urgent" : ""}" style="--accent:${e.accent}">
+          ${e.urgent ? '<div class="urgent-flag">● 7 天内</div>' : ""}
+          <div class="card-top">
+            <span class="tag ${statusClass[e.status]}">${e.status}</span>
+            <span class="index">NO. ${String(i + 1).padStart(2, "0")}</span>
+          </div>
+          <h2>${e.name}</h2>
+          <div class="deadline"><span class="kind">${e.kind}</span><time>${e.display}</time></div>
+          <div class="card-bottom">
+            ${daysHtml}
+            <div class="meter">
+              <div class="meter-track"><div class="meter-fill" style="width:${meterWidth}%"></div></div>
+              <div class="meter-label">${e.urgent ? "URGENT" : e.days === null ? "ONGOING" : "COUNTDOWN"}</div>
+            </div>
+          </div>
+        </article>`;
+    }).join("") : '<div class="empty">该分类下暂无赛事</div>';
+  }
+
+  render("all");
+  document.getElementById("filters").addEventListener("click", ev => {
+    const btn = ev.target.closest(".filter");
+    if (!btn) return;
+    document.querySelectorAll(".filter").forEach(b => b.classList.toggle("active", b === btn));
+    render(btn.dataset.filter);
+  });
+</script>
+</body>
+</html>
